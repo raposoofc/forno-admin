@@ -1,13 +1,17 @@
-// middleware.ts (na raiz)
+// middleware.js
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
 
-// Protege tudo, exceto assets internos do Next e favicon
+// Protege tudo (exceto assets internos do Next e favicon)
 export const config = {
   matcher: ['/((?!_next|favicon.ico).*)'],
 };
 
-export function middleware(req: NextRequest) {
+export function middleware(req) {
+  // redireciona "/" para "/admin.html"
+  if (new URL(req.url).pathname === '/') {
+    return NextResponse.redirect(new URL('/admin.html', req.url));
+  }
+
   const user = process.env.ADMIN_USER || '';
   const pass = process.env.ADMIN_PASS || '';
 
@@ -19,8 +23,8 @@ export function middleware(req: NextRequest) {
   const [scheme, encoded] = auth.split(' ');
 
   if (scheme === 'Basic' && encoded) {
-    // Edge Runtime tem atob
     try {
+      // Edge Runtime tem atob
       const decoded = atob(encoded);
       const sep = decoded.indexOf(':');
       const u = decoded.slice(0, sep);
@@ -29,14 +33,13 @@ export function middleware(req: NextRequest) {
         return NextResponse.next();
       }
     } catch {
-      // segue para pedir autenticação
+      // cai no 401 abaixo
     }
   }
 
   return new NextResponse('Autenticação requerida', {
     status: 401,
     headers: {
-      // Mostra o prompt nativo de usuário/senha
       'WWW-Authenticate': 'Basic realm="Forno Admin", charset="UTF-8"',
     },
   });
